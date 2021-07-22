@@ -602,3 +602,346 @@ for M in ['B+->D*', 'B0->D*']:
     _process_tex = _hadr[M]['tex'] + r"\tau^+\nu"
     _obs.add_taxonomy(_process_taxonomy + _process_tex + r"$")
 Prediction(_obs_name, BR_binned_tot_function('B0', 'D*+', 'tau', A=None))
+
+###############Edits to the official flavio code start here###########
+
+### Gamma hat ####
+
+def Gamma_tot(wc_obj, par, B, V, lep, A):
+    if lep == 'l':
+        # average of e and mu!
+        return (_BR_tot(wc_obj, par, B, V, 'e', A)+_BR_tot(wc_obj, par, B, V, 'mu', A))/(2.*par['tau_B0'])
+    else:
+        return _BR_tot(wc_obj, par, B, V, lep, A)/par['tau_B0'] #*(par['Vcb']**2))
+    
+def Gamma_tot_function(B, V, lep, A):
+    return lambda wc_obj, par: Gamma_tot(wc_obj, par, B, V, lep, A)
+
+def Sigma_Gamma_tot(wc_obj, par, B, V, lep1, lep2, A):
+    return (_BR_tot(wc_obj, par, B, V, lep1, A)+_BR_tot(wc_obj, par, B, V, lep2, A))/(2.*par['tau_B0'])
+def Delta_Gamma_tot(wc_obj, par, B, V, lep1, lep2, A):
+    return (_BR_tot(wc_obj, par, B, V, lep1, A)-_BR_tot(wc_obj, par, B, V, lep2, A))/(par['tau_B0'])
+def Sigma_Gamma_tot_function(B, V, lep1, lep2, A):
+    return lambda wc_obj, par: Sigma_Gamma_tot(wc_obj, par, B, V, lep1, lep2, A)
+def Delta_Gamma_tot_function(B, V, lep1, lep2, A):
+    return lambda wc_obj, par: Delta_Gamma_tot(wc_obj, par, B, V, lep1, lep2, A)
+
+_obs_name ="Gammatot(B0->D*enu)"
+_obs = Observable(_obs_name)
+Prediction(_obs_name, Gamma_tot_function('B0', 'D*+','e',A=None))
+_obs_name ="Gammatot(B0->D*munu)"
+_obs = Observable(_obs_name)
+Prediction(_obs_name, Gamma_tot_function('B0', 'D*+', 'mu',A=None))
+_obs_name ="SigmaGammatot(B->D*lnu)"
+_obs = Observable(_obs_name)
+Prediction(_obs_name, Sigma_Gamma_tot_function('B0', 'D*+', 'mu','e',A=None))
+_obs_name ="DeltaGammatot(B->D*lnu)"
+_obs = Observable(_obs_name)
+Prediction(_obs_name, Delta_Gamma_tot_function('B0', 'D*+', 'mu','e',A=None))
+
+##### <BR>/BR aka xi #######
+
+_obs_name = "<BR>/BR(B0->D*munu)"
+_obs = Observable(name=_obs_name, arguments=['q2min', 'q2max'])
+_obs.set_description(r"Relative partial branching ratio of $B\to D^\ast\mu^+\nu$")
+_obs.tex = r"$\frac{\langle \text{BR} \rangle}{\text{BR}}(B\to D^\ast\mu^+\nu)$"
+for M in ['B0->D*']:
+    _process_tex = _hadr[M]['tex'] + r"\mu^+\nu"
+    _obs.add_taxonomy(_process_taxonomy + _process_tex + r"$")
+Prediction(_obs_name,BR_binned_tot_function('B0', 'D*+', 'mu', A=None))
+
+_obs_name = "<BR>/BR(B0->D*enu)"
+_obs = Observable(name=_obs_name, arguments=['q2min', 'q2max'])
+_obs.set_description(r"Relative partial branching ratio of $B0\to D^\ast e^+\nu$")
+_obs.tex = r"$\frac{\langle \text{BR} \rangle}{\text{BR}}(B0\to D^\ast e^+\nu)$"
+for M in ['B0->D*']:
+    _process_tex = _hadr[M]['tex'] + r"e^+\nu"
+    _obs.add_taxonomy(_process_taxonomy + _process_tex + r"$")
+Prediction(_obs_name, BR_binned_tot_function('B0', 'D*+', 'e', A=None))
+
+def Delta_BR_binned_tot_function(B, V, lep1, lep2, A):
+    def f(wc_obj, par, q2min, q2max):
+        num1 = BR_binned(q2min, q2max, wc_obj, par, B, V, lep1, A)
+        num2 = BR_binned(q2min, q2max, wc_obj, par, B, V, lep2, A)
+        if num1 == 0:
+            return 0
+        if num2 == 0:
+            return 0
+        den1 = BR_tot(wc_obj, par, B, V, lep1, A)
+        den2 = BR_tot(wc_obj, par, B, V, lep2, A)
+        return (num1/den1) - (num2/den2) 
+    return f
+
+def Sigma_BR_binned_tot_function(B, V, lep1, lep2, A):
+    def f(wc_obj, par, q2min, q2max):
+        num1 = BR_binned(q2min, q2max, wc_obj, par, B, V, lep1, A)
+        num2 = BR_binned(q2min, q2max, wc_obj, par, B, V, lep2, A)
+        if num1 == 0:
+            return 0
+        if num2 == 0:
+            return 0
+        den1 = BR_tot(wc_obj, par, B, V, lep1, A)
+        den2 = BR_tot(wc_obj, par, B, V, lep2, A)
+        return ((num1/den1) + (num2/den2))/2 
+    return f
+
+_obs_name = "Delta_<BR>/BR(B->D*muenu)"
+_obs = Observable(name=_obs_name, arguments=['q2min', 'q2max'])
+_obs.set_description(r"Delta Relative partial branching ratio of $B\to D^\ast\mu^+\nu$ - $B\to D^\ast e^+\nu$")
+_obs.tex = r"$\frac{\langle \text{BR} \rangle}{\text{BR}}(B\to D^\ast\mu^+\nu)$"
+for M in ['B0->D*']:
+    _process_tex = _hadr[M]['tex'] + r"\mu^+\nu - e^+ + \nu"
+    _obs.add_taxonomy(_process_taxonomy + _process_tex + r"$")
+Prediction(_obs_name,Delta_BR_binned_tot_function('B0', 'D*+', 'mu','e', A=None))
+
+_obs_name = "Sigma_<BR>/BR(B->D*muenu)"
+_obs = Observable(name=_obs_name, arguments=['q2min', 'q2max'])
+_obs.set_description(r"Delta Relative partial branching ratio of $B\to D^\ast\mu^+\nu$ - $B\to D^\ast e^+\nu$")
+_obs.tex = r"$\frac{\langle \text{BR} \rangle}{\text{BR}}(B\to D^\ast\mu^+\nu)$"
+for M in ['B0->D*']:
+    _process_tex = _hadr[M]['tex'] + r"\mu^+\nu - e^+ + \nu"
+    _obs.add_taxonomy(_process_taxonomy + _process_tex + r"$")
+Prediction(_obs_name,Sigma_BR_binned_tot_function('B0', 'D*+', 'mu','e', A=None))
+
+###### S3 ########@
+
+def S3_tot_function(B, V, lep):
+    def f(wc_obj, par):
+        def fct_J(J):
+            return (3/4.)*J[3]
+        return Stot_norm(fct_J, wc_obj, par, B, V, lep)
+    return f
+
+def Sigma_S3_tot_function(B, V, lep1, lep2):
+    def f(wc_obj, par):
+        def fct_J(J):
+            return (3/4.)*J[3]
+        return Sigma_Stot_norm(fct_J, wc_obj, par, B, V, lep1, lep2)
+    return f
+
+def Delta_S3_tot_function(B, V, lep1, lep2):
+    def f(wc_obj, par):
+        def fct_J(J):
+            return (3/4.)*J[3]
+        return Delta_Stot_norm(fct_J, wc_obj, par, B, V, lep1, lep2)
+    return f
+
+def Stot_norm(fct_J, wc_obj, par, B, V, lep):
+    def fct(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep)
+        return fct_J(J)
+    def fct_den(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep)
+        return dGdq2(J)    
+    #den = obs_q2int(fct_den, wc_obj, par, B, V, lep)
+    num = obs_q2int(fct, wc_obj, par, B, V, lep)
+    BR = BR_tot(wc_obj, par, B, V, lep, A=None)
+    den = BR/par['tau_B0']
+    return num/den
+
+def Sigma_Stot_norm(fct_J, wc_obj, par, B, V, lep1, lep2):
+    def fct1(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep1)
+        return fct_J(J)
+    def fct2(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep2)
+        return fct_J(J)
+    def fct_den1(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep1)
+        return dGdq2(J)
+    def fct_den2(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep2)
+        return dGdq2(J)    
+    num1 = obs_q2int(fct1, wc_obj, par, B, V, lep1) 
+    num2 = obs_q2int(fct2, wc_obj, par, B, V, lep2)
+    den1 = obs_q2int(fct_den1, wc_obj, par, B, V, lep1)
+    den2 = obs_q2int(fct_den2, wc_obj, par, B, V, lep2)
+    #BR = BR_tot(wc_obj, par, B, V, 'l', A=None)
+    #den = BR/par['tau_B0']
+    return (num1/den1 + num2/den2)/2.
+
+def Delta_Stot_norm(fct_J, wc_obj, par, B, V, lep1, lep2):
+    def fct1(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep1)
+        return fct_J(J)
+    def fct2(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep2)
+        return fct_J(J)
+    def fct_den1(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep1)
+        return dGdq2(J)
+    def fct_den2(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep2)
+        return dGdq2(J) 
+    num1 = obs_q2int(fct1, wc_obj, par, B, V, lep1) 
+    num2 = obs_q2int(fct2, wc_obj, par, B, V, lep2)
+    den1 = obs_q2int(fct_den1, wc_obj, par, B, V, lep1)
+    den2 = obs_q2int(fct_den2, wc_obj, par, B, V, lep2)
+    #BR = BR_tot(wc_obj, par, B, V, 'l', A=None)
+    #den = BR/par['tau_B0']
+    return (num1/den1 - num2/den2)
+
+_obs_name ="<S3>(B0->D*enu)"
+_obs = Observable(_obs_name)
+Prediction(_obs_name, S3_tot_function('B0', 'D*+','e'))
+_obs_name ="<S3>(B0->D*munu)"
+_obs = Observable(_obs_name)
+Prediction(_obs_name, S3_tot_function('B0', 'D*+', 'mu'))
+_obs_name ="Sigma<S3>(B0->D*lnu)"
+_obs = Observable(_obs_name)
+Prediction(_obs_name, Sigma_S3_tot_function('B0', 'D*+', 'mu','e'))
+_obs_name ="Delta<S3>(B0->D*lnu)"
+_obs = Observable(_obs_name)
+Prediction(_obs_name, Delta_S3_tot_function('B0', 'D*+', 'mu', 'e'))
+
+######## FL ############
+
+def Sigma_FL_binned(q2min1, q2min2, q2max, wc_obj, par, B, V, lep1, lep2):
+    num1 = flavio.math.integrate.nintegrate(lambda q2: dBRdq2(q2, wc_obj, par, B, V, lep1, A='L'), q2min1, q2max)
+    if num1 == 0:
+        return 0
+    num2 = flavio.math.integrate.nintegrate(lambda q2: dBRdq2(q2, wc_obj, par, B, V, lep2, A='L'), q2min2, q2max)
+    if num2 == 0:
+        return 0
+    denom1 = flavio.math.integrate.nintegrate(lambda q2: dBRdq2(q2, wc_obj, par, B, V, lep1,  A=None), q2min1, q2max)
+    denom2 = flavio.math.integrate.nintegrate(lambda q2: dBRdq2(q2, wc_obj, par, B, V, lep2,  A=None), q2min2, q2max)
+    return ((num1 / denom1) + (num2/denom2))/2.
+
+def Delta_FL_binned(q2min1, q2min2, q2max, wc_obj, par, B, V, lep1, lep2):
+    num1 = flavio.math.integrate.nintegrate(lambda q2: dBRdq2(q2, wc_obj, par, B, V, lep1, A='L'), q2min1, q2max)
+    if num1 == 0:
+        return 0
+    num2 = flavio.math.integrate.nintegrate(lambda q2: dBRdq2(q2, wc_obj, par, B, V, lep2, A='L'), q2min2, q2max)
+    if num2 == 0:
+        return 0
+    denom1 = flavio.math.integrate.nintegrate(lambda q2: dBRdq2(q2, wc_obj, par, B, V, lep1,  A=None), q2min1, q2max)
+    denom2 = flavio.math.integrate.nintegrate(lambda q2: dBRdq2(q2, wc_obj, par, B, V, lep2,  A=None), q2min2, q2max)
+    return ((num1 / denom1) - (num2/denom2))
+
+def Sigma_FL_tot_function(B, V, lep1, lep2):
+    def f(wc_obj, par):
+        mB = par['m_'+B]
+        mV = par['m_'+V]
+        ml1 = par['m_'+lep1]
+        ml2 = par['m_'+lep2]
+        q2max = (mB-mV)**2
+        q2min1 = ml1**2
+        q2min2 = ml2**2
+        return Sigma_FL_binned(q2min1,q2min2, q2max, wc_obj, par, B, V, lep1,lep2)
+    return f
+
+def Delta_FL_tot_function(B, V, lep1, lep2):
+    def f(wc_obj, par):
+        mB = par['m_'+B]
+        mV = par['m_'+V]
+        ml1 = par['m_'+lep1]
+        ml2 = par['m_'+lep2]
+        q2max = (mB-mV)**2
+        q2min1 = ml1**2
+        q2min2 = ml2**2
+        return Delta_FL_binned(q2min1,q2min2, q2max, wc_obj, par, B, V, lep1,lep2)
+    return f
+
+_obs_name ="SigmaFL(B0->D*lnu)"
+_obs = Observable(_obs_name)
+Prediction(_obs_name, Sigma_FL_tot_function('B0', 'D*+', 'mu','e'))
+_obs_name ="DeltaFL(B0->D*lnu)"
+_obs = Observable(_obs_name)
+Prediction(_obs_name, Delta_FL_tot_function('B0', 'D*+', 'mu', 'e'))
+
+############ FLt ################
+
+def Delta_Itot_norm(fct_J, wc_obj, par, B, V, lep1, lep2):
+    def fct1(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep1)
+        return fct_J(J)
+    num1 = obs_q2int(fct1, wc_obj, par, B, V, lep1)
+    def fct2(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep2)
+        return fct_J(J)
+    num2 = obs_q2int(fct2, wc_obj, par, B, V, lep2)
+    def fct_den1(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep1)
+        return dGdq2(J)
+    den1 = obs_q2int(fct_den1, wc_obj, par, B, V, lep1)
+    def fct_den2(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep2)
+        return dGdq2(J)
+    den2 = obs_q2int(fct_den2, wc_obj, par, B, V, lep2)
+    return (num1 / den1)-(num2 / den2)
+
+def Sigma_Itot_norm(fct_J, wc_obj, par, B, V, lep1, lep2):
+    def fct1(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep1)
+        return fct_J(J)
+    num1 = obs_q2int(fct1, wc_obj, par, B, V, lep1)
+    def fct2(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep2)
+        return fct_J(J)
+    num2 = obs_q2int(fct2, wc_obj, par, B, V, lep2)
+    def fct_den1(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep1)
+        return dGdq2(J)
+    den1 = obs_q2int(fct_den1, wc_obj, par, B, V, lep1)
+    def fct_den2(q2):
+        J = get_angularcoeff(q2, wc_obj, par, B, V, lep2)
+        return dGdq2(J)
+    den2 = obs_q2int(fct_den2, wc_obj, par, B, V, lep2)
+    return ((num1 / den1)+(num2 / den2))/2.
+
+def Delta_FLt_tot_function(B, V, lep1, lep2):
+    def f(wc_obj, par):
+        def fct_J(J):
+            return -J['2c']
+        return Delta_Itot_norm(fct_J, wc_obj, par, B, V, lep1,lep2)
+    return f
+
+def Sigma_FLt_tot_function(B, V, lep1, lep2):
+    def f(wc_obj, par):
+        def fct_J(J):
+            return -J['2c']
+        return Sigma_Itot_norm(fct_J, wc_obj, par, B, V, lep1,lep2)
+    return f
+
+_obs_name ="SigmaFLt(B0->D*lnu)"
+_obs = Observable(_obs_name)
+Prediction(_obs_name, Sigma_FLt_tot_function('B0', 'D*+', 'mu','e'))
+_obs_name ="DeltaFLt(B0->D*lnu)"
+_obs = Observable(_obs_name)
+Prediction(_obs_name, Delta_FLt_tot_function('B0', 'D*+', 'mu', 'e'))
+
+######### AFB ##############
+
+def mAFB_tot_function(B, V, lep):
+    def f(wc_obj, par):
+        def fct_J(J):
+            return 3 / 8 * (2 * J['6s'] + J['6c'])
+        return - Itot_norm(fct_J, wc_obj, par, B, V, lep)
+    return f
+
+def Delta_AFB_tot_function(B, V, lep1, lep2):
+    def f(wc_obj, par):
+        def fct_J(J):
+            return 3 / 8 * (2 * J['6s'] + J['6c'])
+        return - Delta_Itot_norm(fct_J, wc_obj, par, B, V, lep1, lep2)
+    return f
+
+def Sigma_AFB_tot_function(B, V, lep1, lep2):
+    def f(wc_obj, par):
+        def fct_J(J):
+            return 3 / 8 * (2 * J['6s'] + J['6c'])
+        return - Sigma_Itot_norm(fct_J, wc_obj, par, B, V, lep1, lep2)
+    return f
+
+_obs_name ="mAFBtot(B0->D*enu)"
+_obs = Observable(_obs_name)
+Prediction(_obs_name, mAFB_tot_function('B0', 'D*+', 'e'))
+_obs_name ="mAFBtot(B0->D*munu)"
+_obs = Observable(_obs_name)
+Prediction(_obs_name, mAFB_tot_function('B0', 'D*+', 'mu'))
+_obs_name ="SigmaAFB(B0->D*lnu)"
+_obs = Observable(_obs_name)
+Prediction(_obs_name, Sigma_AFB_tot_function('B0', 'D*+', 'mu','e'))
+_obs_name ="DeltaAFB(B0->D*lnu)"
+_obs = Observable(_obs_name)
+Prediction(_obs_name, Delta_AFB_tot_function('B0', 'D*+', 'mu', 'e'))
