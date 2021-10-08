@@ -4185,6 +4185,14 @@ LHCb RD* 2017:
   inspire: Aaij:2017uff
   values:
     Rtaumu(B->D*lnu): 0.291 ± 0.019 ± 0.026 ± 0.013
+    
+HFAG RD-RD* 2019:
+  experiment: HFAG 
+  values:
+    Rtaul(B->Dlnu): 0.340 ± 0.027 ± 0.013
+    Rtaul(B->D*lnu): 0.295 ± 0.011 ± 0.008
+  correlation: -0.39
+  
 
 CMS Bs->mumu 2013:
   experiment: CMS
@@ -6227,6 +6235,19 @@ Belle DeltaAFB B->D*lnu 2018:
   inspire: Bobeth:2021lya
   values:
     DeltaAFB(B0->D*lnu): 0.0349919 ± 0.0088049
+    
+Belle ang Delta B->D*lnu 2018:
+  experiment: Belle
+  inspire: Bobeth:2021lya
+  values:
+    DeltaFL(B0->D*lnu): -0.0065 ± 0.0059
+    DeltaAFB(B0->D*lnu): 0.0349919 ± 0.0088049
+    DeltaFLt(B0->D*lnu): -0.0107 ± 0.0142
+    Delta<S3>(B0->D*lnu): -0.0127 ± 0.0109
+  correlation: [[1.00000e+00, -1.06730e-01,  6.31474e-02,  3.17083e-02],
+     [1.00000e+00,  5.05328e-01,  5.32636e-03],
+     [1.00000e+00, -1.16395e-02],
+     [1.00000e+00]]
 
 Belle ang B->D*lnu 2018:
   experiment: Belle

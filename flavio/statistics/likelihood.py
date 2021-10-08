@@ -426,6 +426,101 @@ class SMCovariance(object):
         else:
             self._cov = d['covariance'][permutation][:,permutation]
 
+class NPCovariance(object):
+    """Class to compute, save, and load a covariance matrix of NP
+    predictions.
+
+    Methods:
+
+    - `compute`: Compute the covariance
+    - `get`: Compute the covariance if necessary, otherwise return cached one
+    - `save`: Save the covariance to a file
+    - `load`: Load the covariance from a file
+    - `load_dict`: Load the covariance from a dictionary
+    """
+
+    def __init__(self, observables, *,
+                 vary_parameters='all', par_obj=None, wc_dict={}):
+        """Initialize the class.
+
+        Parameters:
+        - `observables`: list of observables
+        - `vary_parameters`: parameters to vary. Defaults to 'all'.
+        - `par_obj`: instance of ParameterConstraints. Defaults to
+        flavio.default_parameters.
+        """
+        self.observables = observables
+        self.vary_parameters = vary_parameters
+        self.par_obj = par_obj or flavio.default_parameters
+        self._cov = None
+
+    def compute(self, N, threads, wc_dict):
+        """Compute the covariance for `N` random values, using `threads`
+        CPU threads."""
+        return flavio.np_covariance(obs_list=self.observables,
+                                    wc_dict=wc_dict,
+                                    N=N,
+                                    par_vary=self.vary_parameters,
+                                    par_obj=self.par_obj,
+                                    threads=threads)
+
+    def get(self, N=100, threads=1, force=True, wc_dict={}):
+        """Compute the covariance for `N` random values (default: 100),
+        using `threads` CPU threads (default: 1).
+
+        If `force` is False, return a cached version if it exists.
+        """
+        if self._cov is None or force:
+            self._cov = self.compute(N=N, threads=threads, wc_dict=wc_dict)
+        elif N != 100:
+            warnings.warn("Argument N={} ignored ".format(N) + \
+                          "as covariance has already been " + \
+                          "computed. Recompute using `force=True`.")
+        return self._cov
+
+    def save(self, filename):
+        """Save the SM covariance to a pickle file.
+
+        The covariance must have been computed before using `get` or
+        `compute`.
+        """
+        if self._cov is None:
+            raise ValueError("Call `get` or `compute` first.")
+        with open(filename, 'wb') as f:
+            data = dict(covariance=self._cov,
+                        observables=self.observables)
+            pickle.dump(data, f)
+
+    def load(self, filename):
+        """Load the NP covariance from a pickle file."""
+        with open(filename, 'rb') as f:
+            data = pickle.load(f)
+        self.load_dict(d=data)
+
+    def load_dict(self, d):
+        """Load the NP covariance from a dictionary.
+
+        It must have the form `{'observables': [...], 'covariance': [[...]]}`
+        where 'covariance' is a covariance matrix in the basis of observables
+        given by 'observables' which must at least contain all the observables
+        involved in the fit. Additional observables will be ignored; the
+        ordering is arbitrary.
+        """
+        obs = d['observables']
+        try:
+            permutation = [obs.index(o) for o in self.observables]
+        except ValueError:
+            raise ValueError("Covariance matrix does not contain all necessary entries")
+        assert len(permutation) == len(self.observables), \
+            "Covariance matrix does not contain all necessary entries"
+        if len(permutation) == 1:
+            if d['covariance'].shape == ():
+                self._cov = d['covariance']
+            else:
+                self._cov = d['covariance'][permutation][:,permutation][0,0]
+        else:
+            self._cov = d['covariance'][permutation][:,permutation]            
+            
 
 class MeasurementCovariance(object):
     """Class to compute, save, and load a covariance matrix and the central
@@ -654,6 +749,9 @@ class FastLikelihood(NamedInstanceClass, iio.YAMLLoadable):
         self.sm_covariance = SMCovariance(self.observables,
             vary_parameters=self.nuisance_parameters,
             par_obj=self.par_obj)
+        self.np_covariance = NPCovariance(self.observables,
+            vary_parameters=self.nuisance_parameters,
+            par_obj=self.par_obj)
         self.exp_covariance = MeasurementCovariance(
             self.full_measurement_likelihood)
         self.pseudo_measurement = None
@@ -682,6 +780,46 @@ class FastLikelihood(NamedInstanceClass, iio.YAMLLoadable):
         central_exp, cov_exp = self.exp_covariance.get(Nexp, force=force_exp)
         cov_sm = self.sm_covariance.get(N, force=force, threads=threads)
         covariance = cov_exp + cov_sm
+        # add the Pseudo-measurement
+        m = flavio.classes.Measurement('Pseudo-measurement for FastLikelihood instance: ' + self.name)
+        if np.asarray(central_exp).ndim == 0 or len(central_exp) <= 1: # for a 1D (or 0D) array
+            m.add_constraint(self.observables,
+                    NormalDistribution(central_exp, np.sqrt(covariance)))
+        else:
+            m.add_constraint(self.observables,
+                    MultivariateNormalDistribution(central_exp, covariance))
+        self.pseudo_measurement = m
+        self._likelihood = Likelihood(
+            par_obj=self.par_obj,
+            fit_parameters=self.fit_parameters,
+            observables=self.observables,
+            include_measurements=[m.name],  # only include our pseudo-meas.
+            include_pseudo_measurements=True,  # force including the pseudo-meas.
+            )
+        
+    def make_measurement_np(self,wc_dict={},N=100, Nexp=5000, threads=1, force=False, force_exp=False):
+        """Initialize the likelihood by producing a pseudo-measurement containing both
+        experimental uncertainties as well as theory uncertainties stemming
+        from nuisance parameters.
+
+        Optional parameters:
+
+        - `N`: number of random computations for the SM covariance (computing
+          time is proportional to it; more means less random fluctuations.)
+        - `Nexp`: number of random computations for the experimental covariance.
+          This is much less expensive than the theory covariance, so a large
+          number can be afforded (default: 5000).
+        - `threads`: number of parallel threads for the SM
+          covariance computation. Defaults to 1 (no parallelization).
+        - `force`: if True, will recompute SM covariance even if it
+          already has been computed. Defaults to False.
+        - `force_exp`: if True, will recompute experimental central values and
+          covariance even if they have already been computed. Defaults to False.
+        """
+        
+        central_exp, cov_exp = self.exp_covariance.get(Nexp, force=force_exp)
+        cov_np = self.np_covariance.get(N, force=force, threads=threads,wc_dict=wc_dict)
+        covariance = cov_exp + cov_np
         # add the Pseudo-measurement
         m = flavio.classes.Measurement('Pseudo-measurement for FastLikelihood instance: ' + self.name)
         if np.asarray(central_exp).ndim == 0 or len(central_exp) <= 1: # for a 1D (or 0D) array

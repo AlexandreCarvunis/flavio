@@ -35,6 +35,23 @@ def GammaZ(wc_obj, par, f1, f2):
     return GSM + GNP
 
 
+def GammaZ_wo_smeft(wc_obj, par, f1, f2, d_gV, d_gA):
+    scale = flavio.config['renormalization scale']['zdecays']
+    wc_dict = wc_obj.get_wcxf(sector='all', scale=scale, par=par,
+                              eft='SMEFT', basis='Warsaw')
+    Nc = smeftew._QN[f1]['Nc']
+    if f1 == f2:
+        gV_SM = smeftew.gV_SM(f1, par)
+        gA_SM = smeftew.gA_SM(f1, par)
+        GSM = gammazsm.GammaZ_SM(par, f1)
+    else:
+        gV_SM = 0
+        gA_SM = 0
+        GSM = 0
+    GNP = GammaZ_NP(par, Nc, gV_SM, d_gV, gA_SM, d_gA)
+    return GSM + GNP
+
+
 def GammaZ_fct(f1, f2):
     def fu(wc_obj, par):
         return GammaZ(wc_obj, par, f1, f2)

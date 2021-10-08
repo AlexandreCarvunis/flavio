@@ -664,10 +664,11 @@ def contour(x, y, z, levels, *, z_min=None,
                       "precision, the actual minimum should be provided in the "
                       "`z_min` argument.")
         z_min = np.min(z) # use minmum on the grid
+        z = z - z_min # subtract z minimum to make value of new z minimum 0
     elif np.min(z) < z_min:
         raise ValueError("The provided minimum `z_min` has to be smaller than "
                          "the smallest `z` value on the grid.")
-    z = z - z_min # subtract z minimum to make value of new z minimum 0
+    
     if interpolation_factor > 1:
         x = scipy.ndimage.zoom(x, zoom=interpolation_factor, order=1)
         y = scipy.ndimage.zoom(y, zoom=interpolation_factor, order=1)
@@ -688,7 +689,7 @@ def contour(x, y, z, levels, *, z_min=None,
     _contour_args.update(contour_args)
     _contourf_args.update(contourf_args)
     # for the filling, need to add zero contour
-    zero_contour = min(np.min(z),np.min(levels)*(1-1e-16))
+    zero_contour = min(z_min,np.min(z),np.min(levels)*(1-1e-16))
     levelsf = [zero_contour] + list(levels)
     ax = plt.gca()
     if filled:
